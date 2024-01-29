@@ -186,13 +186,18 @@ proc handleTlsConnCb(
       debug "Exception in HttpsHandler closewait", exc = exc.msg
 
 proc accept*(server: HttpServer): Future[HttpRequest] {.async.} =
+  echo "--------- websock accept 1 ------------"
   if not isNil(server.handler):
+    echo "--------- websock accept 2 ------------" 
     raise newException(HttpError,
       "Callback already registered - cannot mix callback and accepts styles!")
 
   trace "Awaiting new request"
+  echo "--------- websock accept 3 ------------" 
   let transp = await StreamServer(server).accept()
+  echo "--------- websock accept 4 ------------"
   let stream = if server.secure:
+    echo "--------- websock accept 5 ------------"
     let tlsStream = newTLSServerAsyncStream(
       newAsyncStreamReader(transp),
       newAsyncStreamWriter(transp),
@@ -202,24 +207,32 @@ proc accept*(server: HttpServer): Future[HttpRequest] {.async.} =
       maxVersion = server.maxVersion,
       flags = server.tlsFlags)
 
+    echo "--------- websock accept 6 ------------"
     AsyncStream(
       reader: tlsStream.reader,
       writer: tlsStream.writer)
   else:
+    echo "--------- websock accept 7 ------------"
     AsyncStream(
       reader: newAsyncStreamReader(transp),
       writer: newAsyncStreamWriter(transp))
 
   trace "Got new request", isTls = server.secure
   try:
+    echo "--------- websock accept 10 ------------" 
     let
       parseFut = server.parseRequest(stream)
+    echo "--------- websock accept 11 ------------" 
     if await withTimeout(parseFut, server.handshakeTimeout):
+      echo "--------- websock accept 12 ------------" 
       return parseFut.read()
+    echo "--------- websock accept 13 ------------" 
     raise newException(HttpError, "Timed out parsing request")
   except CatchableError as exc:
     # Can't hold up the accept loop
+    echo "--------- websock accept 14 ------------" 
     stream.close()
+    echo "--------- websock accept 15 ------------" 
     raise exc
 
 
